@@ -45,31 +45,14 @@ void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
         exit(EXIT_FAILURE);
     }
 
-    char statLine[PATH_LEN];
-    if (fgets(statLine, PATH_LEN, fp) ==NULL){
-        perror("Failed to read stat line");
-        exit(EXIT_FAILURE);
+    char buf[1024];  
+    for(int i=0; i<=6; i++){ //ttyNUM은 7번째에 있다. 
+        memset(buf, '\0', 1024);
+        fscanf(fp, "%s", buf);
     }
-    
-    fclose(fp);
-    
-    // statLine에서 tty 번호 추출
-    char *start = statLine;
-    char *end = strchr(start, ' '); // 첫 번째 공백을 찾음
-    if(end == NULL){
-        perror("Failed to parse TTY number");
-        exit(EXIT_FAILURE);
-    }
-    start = end + 1;
 
-    end = strchr(start, ' ');
-    if(end == NULL){
-        perror("Failed to parse TTY number");
-        exit(EXIT_FAILURE);
-    }
-    
-    strncpy(tty, start, end - start);
-    tty[end -start] = '\0';
+    int ttyNr = atoi(buf); 
+    printf("ttyNr %d\n", ttyNr);
 }
 
 int main(int argc, char *argv){
