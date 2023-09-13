@@ -1,1 +1,2 @@
 git commit id test
+중간에 화면 멈춘거 실화냐
