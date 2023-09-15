@@ -27,10 +27,13 @@
 //}myProc;
 
 pid_t current_pid;
+pid_t parent_pid;
 uid_t current_uid;
 char current[TTY_LEN];
 char myPath[PATH_LEN];  //자신의 path
 char myTTY[TTY_LEN];  //자신의 tty
+char pPath[PATH_LEN];  //부모의 path
+char pTTY[TTY_LEN];  //부모의 tty
    
 
 
@@ -46,21 +49,23 @@ void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 
 		char statPath[PATH_LEN];		// /proc/pid/stat에 대한 절대 경로
 		memset(statPath, '\0', PATH_LEN);
-		strcpy(statPath, path);
+		strcpy(statPath, path);        
 		strcat(statPath, "/stat");
 
+        
 		FILE *statFp;
 		if((statFp = fopen(statPath, "r")) == NULL){	// /proc/pid/stat open
 			fprintf(stderr, "fopen error %s %s\n", strerror(errno), statPath);
 			sleep(1);
 			return;
 		}
-
+       
 		char buf[1024];
 		for(int i = 0; i <= 6; i++){		// 7행까지 read해 TTY_NR 획득
 			memset(buf, '\0', 1024);
 			fscanf(statFp, "%s", buf);
 		}
+
 		fclose(statFp);
 
 		int ttyNr = atoi(buf);		//ttyNr 정수 값으로 저장
@@ -116,22 +121,34 @@ int main(int argc, char *argv){
 	
     //현재 pid
     current_pid = getpid();
+    parent_pid = getppid();
 
     char pidPath[128];
+    char ppidPath[128];
     memset(pidPath, '\0', 128);
+    memset(ppidPath, '\0', 128);
     sprintf(pidPath, "/%d", current_pid);
+    sprintf(ppidPath, "/%d", parent_pid);
 
+    
     strcpy(myPath, PROC);
     strcat(myPath, pidPath);
     
+    strcpy(pPath, PROC);
+    strcat(pPath, ppidPath);
+
+
     printf("myPath : %s\n", myPath);
     
-    getTTY(myPath, myTTY);
+    printf("parentPid : %d\n", getppid());
 
+    getTTY(myPath, myTTY);
+    getTTY(pPath, pTTY);
     printf("TTY:%s\n", myTTY);
     
+    printf("Parent_TTY:%s\n", pTTY);
     current_uid = getuid();
-
+    
     printf("UID:%d\n", current_uid);
     
     return 0;
