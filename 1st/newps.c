@@ -40,6 +40,8 @@ char myCMD[CMD_LEN];  //자신의 tty
 char pCMD[CMD_LEN];  //부모의 tty
  
 
+unsigned int hertz;  
+
 void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 {
     char fdZeroPath[PATH_LEN];			//0번 fd에 대한 절대 경로
@@ -145,12 +147,51 @@ void getCMD(char path[PATH_LEN], char cmd[CMD_LEN]){
 }
 
 
+unsigned long getTIME(char path[PATH_LEN]){
+    
+    char statPath[PATH_LEN];		// /proc/pid/stat에 대한 절대 경로
+    memset(statPath, '\0', PATH_LEN);
+    strcpy(statPath, path);        
+    strcat(statPath, "/stat");
+
+
+    FILE *statFp;
+    if((statFp = fopen(statPath, "r")) == NULL){	// /proc/pid/stat open
+        fprintf(stderr, "fopen error %s %s\n", strerror(errno), statPath);
+        sleep(1);
+        return -1;
+    }
+
+    char bufU[1024];
+    char bufS[1024];
+    for(int i = 0; i <= 14; i++){
+        memset(bufU, '\0', 1024); 
+        memset(bufS, '\0', 1024);
+        
+        if(i == 13){
+            fscanf(statFp, "%s", bufU);
+        }
+        if(i==14){
+            fscanf(statFp, "%s", bufS);
+        }
+    }
+
+    fclose(statFp);
+
+    unsigned long utime  = atoi(bufU);
+    unsigned long stime = atoi(bufS);
+    unsigned long totaltime = utime + stime; 
+    return totaltime;
+}
+
 int main(int argc, char *argv){
 	
     //현재 pid
     current_pid = getpid();
     parent_pid = getppid();
-
+    
+    hertz =  (unsigned int)sysconf(_SC_CLK_TCK);
+    
     char pidPath[128];
     char ppidPath[128];
     memset(pidPath, '\0', 128);
@@ -182,6 +223,8 @@ int main(int argc, char *argv){
     printf("CMD : %s\n", myCMD);
     printf("pCMD :%s\n", pCMD);
 
+    printf("TIEM %lu\n",  getTIME(myPath));
+    printf("pTIME %lu\n", getTIME(pPath));
     current_uid = getuid();
     
     printf("UID:%d\n", current_uid);
