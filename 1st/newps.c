@@ -13,6 +13,7 @@
 #define PROC "/proc"  // /proc 절대 경로
 
 #define TTY_LEN 32
+#define CMD_LEN 32
 #define PATH_LEN 1024
 
 //typedef struct{
@@ -35,7 +36,9 @@ char myTTY[TTY_LEN];  //자신의 tty
 char pPath[PATH_LEN];  //부모의 path
 char pTTY[TTY_LEN];  //부모의 tty
    
-
+char myCMD[CMD_LEN];  //자신의 tty
+char pCMD[CMD_LEN];  //부모의 tty
+ 
 
 void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 {
@@ -117,6 +120,31 @@ void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 	return;
 }
 
+void getCMD(char path[PATH_LEN], char cmd[CMD_LEN]){
+    
+    char cmdPath[PATH_LEN];		// /proc/pid/cmdline에 대한 절대 경로
+    memset(cmdPath, '\0', CMD_LEN);
+    strcpy(cmdPath, path);        
+    strcat(cmdPath, "/cmdline");
+
+
+    FILE *cmdFp;
+    if((cmdFp = fopen(cmdPath, "r")) == NULL){	// /proc/pid/cmdline open
+        fprintf(stderr, "fopen error %s %s\n", strerror(errno), cmdPath);
+        sleep(1);
+        return;
+    }
+
+    char buf[1024];
+    memset(buf, '\0', 1024);
+    fscanf(cmdFp, "%s", buf);
+
+    fclose(cmdFp);
+
+    strcpy(cmd, buf);
+}
+
+
 int main(int argc, char *argv){
 	
     //현재 pid
@@ -144,9 +172,16 @@ int main(int argc, char *argv){
 
     getTTY(myPath, myTTY);
     getTTY(pPath, pTTY);
-    printf("TTY:%s\n", myTTY);
     
+    printf("TTY:%s\n", myTTY);
     printf("Parent_TTY:%s\n", pTTY);
+    
+    getCMD(myPath, myCMD);
+    getCMD(pPath, pCMD);
+
+    printf("CMD : %s\n", myCMD);
+    printf("pCMD :%s\n", pCMD);
+
     current_uid = getuid();
     
     printf("UID:%d\n", current_uid);
