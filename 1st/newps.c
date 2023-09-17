@@ -43,76 +43,18 @@ void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 	strcpy(fdZeroPath, path);
 	strcat(fdZeroPath, "/fd/0");
 
-	if(access(fdZeroPath, F_OK) < 0){	//fd 0이 없을 경우
+    char symLinkName[128];
+    memset(symLinkName, '\0', 128);
+    if(readlink(fdZeroPath, symLinkName, 128) < 0){
+        fprintf(stderr, "readlink error for %s\n", fdZeroPath);
+        exit(1);
+    }
+    if(!strcmp(symLinkName, "/dev/null"))		//symbolic link로 가리키는 파일이 /dev/null일 경우
+        strcpy(tty, "?");					//nonTerminal
+    else
+        sscanf(symLinkName, "/dev/%s", tty);	//그 외의 경우 tty 획득
 
-		char statPath[PATH_LEN];		// /proc/pid/stat에 대한 절대 경로
-		memset(statPath, '\0', PATH_LEN);
-		strcpy(statPath, path);        
-		strcat(statPath, "/stat");
 
-        
-		FILE *statFp;
-		if((statFp = fopen(statPath, "r")) == NULL){	// /proc/pid/stat open
-			fprintf(stderr, "fopen error %s %s\n", strerror(errno), statPath);
-			sleep(1);
-			return;
-		}
-       
-		char buf[1024];
-		for(int i = 0; i <= 6; i++){		// 7행까지 read해 TTY_NR 획득
-			memset(buf, '\0', 1024);
-			fscanf(statFp, "%s", buf);
-		}
-
-		fclose(statFp);
-
-		int ttyNr = atoi(buf);		//ttyNr 정수 값으로 저장
-
-		DIR *dp;
-		struct dirent *dentry;
-		if((dp = opendir("/dev")) == NULL){		// 터미널 찾기 위해 /dev 디렉터리 open
-			fprintf(stderr, "opendir error for %s\n", "/dev");
-			exit(1);
-		}
-		char nowPath[PATH_LEN];
-
-		while((dentry = readdir(dp)) != NULL){	// /dev 디렉터리 탐색
-			memset(nowPath, '\0', PATH_LEN);	// 현재 탐색 중인 파일 절대 경로
-			strcpy(nowPath, "/dev");
-			strcat(nowPath, "/");
-			strcat(nowPath, dentry->d_name);
-
-			struct stat statbuf;
-			if(stat(nowPath, &statbuf) < 0){	// stat 획득
-				fprintf(stderr, "stat error for %s\n", nowPath);
-				exit(1);
-			}
-			if(!S_ISCHR(statbuf.st_mode))		//문자 디바이스 파일이 아닌 경우 skip
-				continue;
-			else if(statbuf.st_rdev == ttyNr){	//문자 디바이스 파일의 디바이스 ID가 ttyNr과 같은 경우
-				strcpy(tty, dentry->d_name);	//tty에 현재 파일명 복사
-				break;
-			}
-		}
-		closedir(dp);
-
-		if(!strlen(tty))					// /dev에서도 찾지 못한 경우
-			strcpy(tty, "?");				//nonTerminal
-	}
-	else{
-		char symLinkName[128];
-		memset(symLinkName, '\0', 128);
-		if(readlink(fdZeroPath, symLinkName, 128) < 0){
-			fprintf(stderr, "readlink error for %s\n", fdZeroPath);
-			exit(1);
-		}
-		if(!strcmp(symLinkName, "/dev/null"))		//symbolic link로 가리키는 파일이 /dev/null일 경우
-			strcpy(tty, "?");					//nonTerminal
-		else
-			sscanf(symLinkName, "/dev/%s", tty);	//그 외의 경우 tty 획득
-
-	}
-	return;
 }
 
 void getCMD(char path[PATH_LEN], char cmd[CMD_LEN]){
