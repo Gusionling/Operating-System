@@ -38,10 +38,10 @@ char pTIME[TIME_LEN];  //부모의 time
 void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 {
     char fdZeroPath[PATH_LEN];			//0번 fd에 대한 절대 경로
-	memset(tty, '\0', TTY_LEN);
-	memset(fdZeroPath, '\0', TTY_LEN);
-	strcpy(fdZeroPath, path);
-	strcat(fdZeroPath, "/fd/0");
+    memset(tty, '\0', TTY_LEN);
+    memset(fdZeroPath, '\0', TTY_LEN);
+    strcpy(fdZeroPath, path);
+    strcat(fdZeroPath, "/fd/0");
 
     char symLinkName[128];
     memset(symLinkName, '\0', 128);
