@@ -37,23 +37,22 @@ char pTIME[TIME_LEN];  //부모의 time
 
 void getTTY(char path[PATH_LEN], char tty[TTY_LEN])
 {
-    char fdZeroPath[PATH_LEN];			//0번 fd에 대한 절대 경로
+    char stdinPath[PATH_LEN];			//stdin FILENO
     memset(tty, '\0', TTY_LEN);
-    memset(fdZeroPath, '\0', TTY_LEN);
-    strcpy(fdZeroPath, path);
-    strcat(fdZeroPath, "/fd/0");
+    memset(stdinPath, '\0', TTY_LEN);
+    strcpy(stdinPath, path);
+    strcat(stdinPath, "/fd/0");
 
-    char symLinkName[128];
-    memset(symLinkName, '\0', 128);
-    if(readlink(fdZeroPath, symLinkName, 128) < 0){
-        fprintf(stderr, "readlink error for %s\n", fdZeroPath);
+    char symLink[128];
+    memset(symLink, '\0', 128);
+    if(readlink(stdinPath, symLink, 128) < 0){
+        fprintf(stderr, "readlink error for %s\n", stdinPath);
         exit(1);
     }
-    if(!strcmp(symLinkName, "/dev/null"))		//symbolic link로 가리키는 파일이 /dev/null일 경우
-        strcpy(tty, "?");					//nonTerminal
+    if(!strcmp(symLink, "/dev/null"))	
+        strcpy(tty, "?");			//nonTerminal
     else
-        sscanf(symLinkName, "/dev/%s", tty);	//그 외의 경우 tty 획득
-
+        sscanf(symLink, "/dev/%s", tty);	//그 외의 경우 tty 획득
 
 }
 
