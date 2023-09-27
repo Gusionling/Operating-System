@@ -11,8 +11,13 @@
 
 //Token codes
 #define INT_LIT 10
+
 #define IDENT 11
 #define START 12
+
+//operator
+#define ADD_OP 20
+#define SUB_OP 21
 
 //iserror
 #define FALSE 0
@@ -20,7 +25,7 @@
 
 char input[100];
 char ret[100];
-char reversed[100];
+long reversed;
 int charClass;
 char lexeme[100];
 char nextChar;
@@ -37,12 +42,15 @@ void addChar();
 void getNonBlank();
 int lex();
 
+void expr();
+void oper();
 
-int reverse(char *str){
+
+long reverse(char *str){
     int length = 0;
     int i;
     long k;
-    
+
     while(str[length] != '\0'){
         length++;
     }
@@ -51,16 +59,39 @@ int reverse(char *str){
         ret[length-i-1] = str[i];
     }
     ret[length] ='\0';
-    strcpy(str, ret);
+    k = strtol(ret,NULL, 10);
     
-    return 0;
+    return k;
+}
+
+long add_cal(long a, long b){
+    return a + b;
+}
+
+long sub_call(long a, long b){
+    return a - b;
 }
 
 int lookup(char ch){
-   
-    addChar();
-    nextToken = EOF;
-    
+
+    switch (ch)
+    {
+        case '+':
+            addChar();
+            nextToken = ADD_OP;
+            break; 
+
+        case '-':
+            addChar();
+            nextToken = SUB_OP;
+            break; 
+            
+        default:
+            addChar();
+            nextToken = EOF;
+            break;
+    }
+
     return nextToken;
 }
 void addChar(){
@@ -79,7 +110,7 @@ void getChar(){
             charClass = DIGIT;
         }
         else{
-            if(nextChar == ' '){
+            if(nextChar == ' ' || nextChar =='+' || nextChar =='-'){
                 charClass = UNKNOWN;
             }
             else{
@@ -127,6 +158,15 @@ int lex(){
     return nextToken;
 }
 
+void expr(){
+    if(nextToken == INT_LIT){
+        
+    }
+    else{
+
+    }
+}
+
 
 int main(int argc, char *argv)
 {
@@ -159,21 +199,16 @@ int main(int argc, char *argv)
                     printf("Wrong input!\n");
                 }
                 else{
-                    printf("ouput: %s\n", reversed);
+                    printf("ouput: %ld\n", reversed);
                 }
                 iserror = FALSE;
                 break;
             }
 
             lex();
-            if(nextToken == INT_LIT){
-                strcpy(reversed, lexeme);
-                reverse(reversed);
-            }
+            expr();
         }
     }
-    
-        
     
    return 0;
 }
