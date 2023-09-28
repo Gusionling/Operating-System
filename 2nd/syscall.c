@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <unistd.h>
 
 //Character classes
 #define DIGIT 1
@@ -22,6 +23,10 @@
 #define FALSE 0
 #define TRUE 1
 
+#define ALPHA_REVERSE 449
+#define OPER_ADD 450
+#define OPER_SUB 451
+
 char input[100];
 char ret[100];
 long operand[100];
@@ -38,12 +43,13 @@ int iserror = FALSE;
 long unit;
 int len;
 int is_reverse = FALSE;
+long result = 0;
+
 
 void getChar();
 void addChar();
 void getNonBlank();
 int lex();
-
 void expr();
 void oper();
 
@@ -166,7 +172,7 @@ void expr() {
     if (nextToken == INT_LIT) {
         operand[0] = strtol(lexeme, NULL, 10);
         strcpy(reversed, lexeme);
-        reverse(reversed);
+        syscall(ALPHA_REVERSE, reverse);
 
         lex();
         if (nextToken == EOF) {
@@ -183,7 +189,8 @@ void expr() {
                 iserror = TRUE;
             }
             else {
-                retCal = sub_call(operand[0], operand[1]);
+                syscall(OPER_SUB, operand[0], operand[1], &result);
+
             }
         }
         else if (nextToken == SUB_OP) {
@@ -196,7 +203,7 @@ void expr() {
                 iserror = TRUE;
             }
             else {
-                retCal = add_cal(operand[0], operand[1]);
+                syscall(OPER_ADD, operand[0], operand[1], &result);
             }
         }
     }
@@ -236,8 +243,8 @@ int main(int argc, char* argv)
                 if (iserror == TRUE) {
                     printf("Wrong input!\n");
                 }
-                else if (retCal != 9999) {
-                    printf("output : %ld\n", retCal);
+                else if (result != 9999) {
+                    printf("output : %ld\n", result);
                 }
                 else if (is_reverse == TRUE)
                 {
@@ -246,7 +253,7 @@ int main(int argc, char* argv)
 
                 memset(operand, '\0', 100);
                 memset(reversed, '\0', 100);
-                retCal = 9999;
+                result = 9999;
                 iserror = FALSE;
                 break;
             }
