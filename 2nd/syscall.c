@@ -31,7 +31,7 @@ char input[100];
 char ret[100];
 long operand[100];
 char reversed[100];
-long retCal = 9999;
+char transfer[100];
 int charClass;
 char lexeme[100];
 char nextChar;
@@ -43,7 +43,7 @@ int iserror = FALSE;
 long unit;
 int len;
 int is_reverse = FALSE;
-long result = 0;
+long result = 9999;
 
 
 void getChar();
@@ -52,32 +52,6 @@ void getNonBlank();
 int lex();
 void expr();
 void oper();
-
-
-int reverse(char* str) {
-    int length = 0;
-    int j;
-
-    while (str[length] != '\0') {
-        length++;
-    }
-
-    for (j = 0; j < length; j++) {
-        ret[length - j - 1] = str[j];
-    }
-    ret[length] = '\0';
-    strcpy(str, ret);
-
-    return 0;
-}
-
-long add_cal(long a, long b) {
-    return a + b;
-}
-
-long sub_call(long a, long b) {
-    return a - b;
-}
 
 int lookup(char ch) {
 
@@ -172,8 +146,8 @@ void expr() {
     if (nextToken == INT_LIT) {
         operand[0] = strtol(lexeme, NULL, 10);
         strcpy(reversed, lexeme);
-        syscall(ALPHA_REVERSE, reverse);
-
+        syscall(ALPHA_REVERSE, reversed);
+        
         lex();
         if (nextToken == EOF) {
             is_reverse = TRUE;
@@ -226,8 +200,6 @@ int main(int argc, char* argv)
             break;
         }
         // 입력받은 문자열을 출력합니다.
-        printf("입력한 문자열: %s", input);
-        printf("입력한 문자열 길이 %d\n", len);
 
         getChar();
         while (1) {
@@ -245,15 +217,16 @@ int main(int argc, char* argv)
                 }
                 else if (result != 9999) {
                     printf("output : %ld\n", result);
+                    result = 9999;
                 }
                 else if (is_reverse == TRUE)
                 {
                     printf("output : %s\n", reversed);
+                    is_reverse = FALSE;
                 }
 
                 memset(operand, '\0', 100);
                 memset(reversed, '\0', 100);
-                result = 9999;
                 iserror = FALSE;
                 break;
             }
