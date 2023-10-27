@@ -1,8 +1,10 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <sched.h>
 
 void CfsDefault(){
 	printf("This is CFS_DEFAULT\n");
@@ -23,6 +25,16 @@ void RtRr(){
 
 int main(int argc, char **argv)
 {
+	int core_id =0;
+	cpu_set_t mask;
+
+	CPU_ZERO(&mask); 	// mask를 초기화한다. 
+	CPU_SET(core_id, &mask);		// 원하는 코어 ID를 설정한다. 
+ 	
+	if(sched_setaffinity(0, sizeof(mask), &mask) == -1){
+		perror("sched_setaffinity");
+	}
+
 	int select; 
 
 	while(1){
