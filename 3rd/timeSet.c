@@ -9,12 +9,52 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #define PIDS 21
 
 
 void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
-	printf("PID: %d | Start time: %ld.%06ld seconds | End time: %ld.%06ld seconds\n", pid, start_time.tv_sec, start_time.tv_usec, end_time.tv_sec, end_time.tv_usec);
+    
+    struct timeval elapsed_time;
+    timersub(&end_time, &start_time, &elapsed_time);
+
+	struct tm* start_tm = localtime(&start_time.tv_sec);
+	struct tm* end_tm = localtime(&end_time.tv_sec);
+
+	// 시작 시간
+    int start_hour = start_tm->tm_hour;
+    int start_minute = start_tm->tm_min;
+    int start_second = start_tm->tm_sec;
+
+    // 종료 시간
+    int end_hour = end_tm->tm_hour;
+    int end_minute = end_tm->tm_min;
+    int end_second = end_tm->tm_sec;
+
+
+    printf("PID: %d | ", pid);
+	printf("Start time: %02d:%02d:%02d.%06ld | ",start_hour, start_minute, start_second, start_time.tv_usec);
+	printf("End time: %02d:%02d:%02d.%06ld | ",end_hour, end_minute, end_second, end_time.tv_usec);
+	printf("Elapsed time: %ld.%06ld\n", elapsed_time.tv_sec, elapsed_time.tv_usec);
+
+}
+
+void print_avg_elapsed_time(struct timeval begin_t[], struct timeval end_t[]) {
+    // 모든 자식 프로세스의 실행 시간을 합산
+    struct timeval total_elapsed_time = {0, 0};
+    for (int i = 0; i < PIDS; i++) {
+        struct timeval elapsed_time;
+        timersub(&end_t[i], &begin_t[i], &elapsed_time);
+        timeradd(&total_elapsed_time, &elapsed_time, &total_elapsed_time);
+    }
+
+    // 실행 시간의 평균 계산
+    struct timeval avg_elapsed_time = {0, 0};
+    avg_elapsed_time.tv_sec = total_elapsed_time.tv_sec / PIDS;
+    avg_elapsed_time.tv_usec = total_elapsed_time.tv_usec / PIDS;
+
+    printf("Average Elapsed Time: %ld.%06ld seconds\n", avg_elapsed_time.tv_sec, avg_elapsed_time.tv_usec);
 }
 
 void product(){
@@ -44,10 +84,10 @@ void product(){
 
 
 void CfsDefault(){
-	printf("This is CFS_DEFAULT\n");
+	
 	uint8_t i,j;
-	uint32_t pid, pid_list[PIDS] = {0};
-	struct timeval begin_t[PIDS], end_t[PIDS];
+	uint32_t pid, pid_list[PIDS] = {0}; 
+	struct timeval begin_t[PIDS], end_t[PIDS], elapsed_time;
 
 
 	for(i=0; i<PIDS; i++){
@@ -84,11 +124,16 @@ void CfsDefault(){
 			for(j=0; j<PIDS; j++){
 				if(pid_list[j]== pid){
                     gettimeofday(&end_t[j], NULL);
+					
 					print_time(pid, begin_t[j], end_t[j]);
 				}
 			}
 		}
 	}
+
+    
+    printf("Scheduling Policy: CFS_DEFAULT | ");
+	print_avg_elapsed_time(begin_t, end_t);
 	
 }
 
