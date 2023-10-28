@@ -18,7 +18,6 @@ void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time
 }
 
 void product(){
-	printf("enter product\n");
 	int k, i, j;
 	int count = 0; 
 
@@ -74,7 +73,6 @@ void CfsDefault(){
 		}
 
 		else{
-			printf("enter fork()\n");
 			pid_list[i] = pid;
 		}
 		
@@ -85,7 +83,6 @@ void CfsDefault(){
 		if((pid = wait(&status))>1){
 			for(j=0; j<PIDS; j++){
 				if(pid_list[j]== pid){
-					printf("printf time\n");
                     gettimeofday(&end_t[j], NULL);
 					print_time(pid, begin_t[j], end_t[j]);
 				}
