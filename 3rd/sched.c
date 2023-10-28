@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <sys/wait.h>
 
+#define PIDS 5
+
 
 void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
 	printf("PID: %d | Start time: %ld.%06ld seconds | End time: %ld.%06ld seconds\n", pid, start_time.tv_sec, start_time.tv_usec, end_time.tv_sec, end_time.tv_usec);
@@ -45,11 +47,11 @@ void product(){
 void CfsDefault(){
 	printf("This is CFS_DEFAULT\n");
 	uint8_t i,j;
-	uint32_t pid, pid_list[21] = {0};
-	struct timeval begin_t[21], end_t[21];
+	uint32_t pid, pid_list[PIDS] = {0};
+	struct timeval begin_t[PIDS], end_t[PIDS];
 
 
-	for(i=0; i<21; i++){
+	for(i=0; i<PIDS; i++){
 
 		gettimeofday(&begin_t[i], NULL); //생성 시간 측정
 		
@@ -58,29 +60,30 @@ void CfsDefault(){
 			exit(EXIT_FAILURE);
 		}
 		
+		if(pid == 0)
+		{
+			//자식 프로세스 작업 수행
+			product();
+
+			// 자식 프로세스 종료 시간 측정
+			gettimeofday(&end_t[i], NULL);
+
+
+			//자식 프로세스 종료
+			exit(EXIT_SUCCESS);
+		}
+
 		else{
 			printf("enter fork()\n");
 			pid_list[i] = pid;
 		}
+		
 	}
 
-	if(pid == 0);
-	{
-		//자식 프로세스 작업 수행
-		product();
-
-		// 자식 프로세스 종료 시간 측정
-		gettimeofday(&end_t[i], NULL);
-
-
-		//자식 프로세스 종료
-		exit(EXIT_SUCCESS);
-	}
-
-	for(i=0; i<21; i++){
+	for(i=0; i<PIDS; i++){
 		int status;
 		if((pid = wait(&status))>1){
-			for(j=0; j<21; j++){
+			for(j=0; j<PIDS; j++){
 				if(pid_list[j]== pid){
 					printf("printf time\n");
 					print_time(pid, begin_t[j], end_t[j]);
