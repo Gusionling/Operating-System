@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <sys/wait.h>
 
-#define PIDS 5
+#define PIDS 21
 
 
 void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
@@ -52,25 +52,27 @@ void CfsDefault(){
 
 
 	for(i=0; i<PIDS; i++){
+
+		gettimeofday(&begin_t[i], NULL); //생성 시간 측정
 		
 		if((pid = fork()) == (uint32_t)-1){
-			perror("Failed to fork\n");
+			perror("Failed to fork");
 			exit(EXIT_FAILURE);
-		}
-		else{
-			gettimeofday(&begin_t[i], NULL); //생성 시간 측정
-			printf("생성후 pid : %d index : %d \n", getpid(), i);
 		}
 		
 		if(pid == 0)
 		{
 			//자식 프로세스 작업 수행
 			product();
-			printf("연산이후 pid : %d index : %d \n", getpid(), i);
-			// 자식 프로세스 종료 시간 측정
-			//gettimeofday(&end_t[i], NULL);
 
+			// 자식 프로세스 종료 시간 측정
+			
+
+
+			//자식 프로세스 종료
+			exit(EXIT_SUCCESS);
 		}
+
 		else{
 			printf("enter fork()\n");
 			pid_list[i] = pid;
@@ -81,10 +83,10 @@ void CfsDefault(){
 	for(i=0; i<PIDS; i++){
 		int status;
 		if((pid = wait(&status))>1){
-			
 			for(j=0; j<PIDS; j++){
 				if(pid_list[j]== pid){
-					gettimeofday(&end_t[j], NULL);
+					printf("printf time\n");
+                    gettimeofday(&end_t[j], NULL);
 					print_time(pid, begin_t[j], end_t[j]);
 				}
 			}
