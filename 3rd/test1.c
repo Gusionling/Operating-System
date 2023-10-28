@@ -14,11 +14,7 @@
 
 
 void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
-	
-    struct timeval elapsed_time;
-
-    timersub(&end_time, &start_time, &elapsed_time);
-    printf("PID: %d | Start time: %ld.%06ld seconds | End time: %ld.%06ld seconds | Elapsed time: %ld.%06ld \n", pid, start_time.tv_sec, start_time.tv_usec, end_time.tv_sec, end_time.tv_usec, elapsed_time.tv_sec, elapsed_time.tv_usec);
+	printf("PID: %d | Start time: %ld.%06ld seconds | End time: %ld.%06ld seconds\n", pid, start_time.tv_sec, start_time.tv_usec, end_time.tv_sec, end_time.tv_usec);
 }
 
 void product(){
@@ -48,10 +44,10 @@ void product(){
 
 
 void CfsDefault(){
-	
+	printf("This is CFS_DEFAULT\n");
 	uint8_t i,j;
-	uint32_t pid, pid_list[PIDS] = {0}; 
-	struct timeval begin_t[PIDS], end_t[PIDS], temp_t;
+	uint32_t pid, pid_list[PIDS] = {0};
+	struct timeval begin_t[PIDS], end_t[PIDS];
 
 
 	for(i=0; i<PIDS; i++){
@@ -93,8 +89,6 @@ void CfsDefault(){
 			}
 		}
 	}
-    
-    printf("Scheduling Policy: CFS_DEFAULT | Average elapsed time: ");
 	
 }
 
