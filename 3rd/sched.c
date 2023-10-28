@@ -5,9 +5,90 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sched.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <stdint.h>
+#include <sys/wait.h>
+
+
+void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
+	printf("PID: %d | Start time: %ld.%06ld seconds | End time: %ld.%06ld seconds\n", pid, start_time.tv_sec, start_time.tv_usec, end_time.tv_sec, end_time.tv_usec);
+}
+
+void product(){
+	printf("enter product\n");
+	int k, i, j;
+	int count = 0; 
+
+	int result[100][100];
+	int A[100][100];
+	int B[100][100];
+
+	memset(result, 1, sizeof(result));
+	memset(A, 1, sizeof(A));
+	memset(B, 1, sizeof(B));
+
+	while(count < 100){
+        for(k = 0; k < 100; k++){
+            for(i = 0; i < 100; i++){
+                for(j = 0; j < 100; j++){
+                    result[k][j] += A[k][i] * B[i][j];
+                }
+            }
+        }
+        count++;
+ 	}
+
+}
+
 
 void CfsDefault(){
 	printf("This is CFS_DEFAULT\n");
+	uint8_t i,j;
+	uint32_t pid, pid_list[21] = {0};
+	struct timeval begin_t[21], end_t[21];
+
+
+	for(i=0; i<21; i++){
+
+		gettimeofday(&begin_t[i], NULL); //생성 시간 측정
+		
+		if((pid = fork()) == (uint32_t)-1){
+			perror("Failed to fork");
+			exit(EXIT_FAILURE);
+		}
+		
+		else{
+			printf("enter fork()\n");
+			pid_list[i] = pid;
+		}
+	}
+
+	if(pid == 0);
+	{
+		//자식 프로세스 작업 수행
+		product();
+
+		// 자식 프로세스 종료 시간 측정
+		gettimeofday(&end_t[i], NULL);
+
+
+		//자식 프로세스 종료
+		exit(EXIT_SUCCESS);
+	}
+
+	for(i=0; i<21; i++){
+		int status;
+		if((pid = wait(&status))>1){
+			for(j=0; j<21; j++){
+				if(pid_list[j]== pid){
+					printf("printf time\n");
+					print_time(pid, begin_t[j], end_t[j]);
+				}
+			}
+		}
+	}
+	
 }
 
 void CfsNice(){
@@ -23,8 +104,11 @@ void RtRr(){
 }
 
 
+
+
 int main(int argc, char **argv)
 {
+	
 	int core_id =0;
 	cpu_set_t mask;
 
