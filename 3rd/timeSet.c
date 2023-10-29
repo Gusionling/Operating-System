@@ -13,8 +13,13 @@
 
 #define PIDS 21
 
+#define NICE_HIGH -19
+#define NICE_MID 1
+#define NICE_LOW 19
+#define NNICE 99
 
-void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time){
+//if_nice는 CFS_NICE일 떄 출력 값을 다르게 하기 위해서 적는 변수이며 nice 범위 밖인 99가 default이다. 
+void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time, int if_nice){
     
     struct timeval elapsed_time;
     timersub(&end_time, &start_time, &elapsed_time);
@@ -38,6 +43,9 @@ void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time
 
 
     printf("PID: %d | ", pid);
+	if(if_nice != NNICE){
+		printf("NICE: %3d | ", if_nice);
+	}
 	printf("Start time: %02d:%02d:%02d.%06ld | ",start_hour, start_minute, start_second, start_time.tv_usec);
 	printf("End time: %02d:%02d:%02d.%06ld | ",end_hour, end_minute, end_second, end_time.tv_usec);
 	printf("Elapsed time: %ld.%06ld\n", elapsed_time.tv_sec, elapsed_time.tv_usec);
@@ -125,7 +133,7 @@ void CfsDefault(){
 				if(pid_list[j]== pid){
                     gettimeofday(&end_t[j], NULL);
 					
-					print_time(pid, begin_t[j], end_t[j]);
+					print_time(pid, begin_t[j], end_t[j], NNICE);
 				}
 			}
 		}
@@ -138,7 +146,73 @@ void CfsDefault(){
 }
 
 void CfsNice(){
-	printf("This is CFS_NICE\n");
+	
+	uint8_t i,j;
+	uint32_t pid, pid_list[PIDS] = {0}; 
+	struct timeval begin_t[PIDS], end_t[PIDS], elapsed_time;
+
+
+	for(i=0; i<PIDS; i++){
+
+		gettimeofday(&begin_t[i], NULL); //생성 시간 측정
+		
+		if((pid = fork()) == (uint32_t)-1){
+			perror("Failed to fork");
+			exit(EXIT_FAILURE);
+		}
+		
+		if(pid == 0)
+		{
+
+			//생성 순서에 따른 nice값 적용
+			if(i<7){
+				nice(NICE_HIGH);
+				product();
+			}
+			else if (i<14){
+				nice(NICE_MID);
+				product();
+			}
+			else
+			{
+				nice(NICE_LOW);
+				product();
+			}
+
+			//자식 프로세스 종료
+			exit(EXIT_SUCCESS);
+		}
+
+		else{
+			pid_list[i] = pid;
+		}
+		
+	}
+
+	for(i=0; i<PIDS; i++){
+		int status;
+		if((pid = wait(&status))>1){
+			for(j=0; j<PIDS; j++){
+				if(pid_list[j]== pid){
+                    gettimeofday(&end_t[j], NULL);
+					if(j<7){
+						print_time(pid, begin_t[j], end_t[j], NICE_HIGH);
+					}
+					else if(j <14){
+						print_time(pid, begin_t[j], end_t[j], NICE_MID);
+					}
+					else{
+						print_time(pid, begin_t[j], end_t[j], NICE_LOW);
+					}
+				
+				}
+			}
+		}
+	}
+
+    
+    printf("Scheduling Policy: CFS_NICE | ");
+	print_avg_elapsed_time(begin_t, end_t);
 }
 
 void RtFifo(){
