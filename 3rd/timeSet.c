@@ -19,18 +19,22 @@ void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time
     struct timeval elapsed_time;
     timersub(&end_time, &start_time, &elapsed_time);
 
-	struct tm* start_tm = localtime(&start_time.tv_sec);
-	struct tm* end_tm = localtime(&end_time.tv_sec);
+	time_t start_seconds = start_time.tv_sec;
+    time_t end_seconds = end_time.tv_sec;
 
-	// 시작 시간
-    int start_hour = start_tm->tm_hour;
-    int start_minute = start_tm->tm_min;
-    int start_second = start_tm->tm_sec;
+    struct tm start_timeinfo;
+    struct tm end_timeinfo;
 
-    // 종료 시간
-    int end_hour = end_tm->tm_hour;
-    int end_minute = end_tm->tm_min;
-    int end_second = end_tm->tm_sec;
+	localtime_r(&start_seconds, &start_timeinfo);
+    localtime_r(&end_seconds, &end_timeinfo);
+
+    int start_hour = start_timeinfo.tm_hour;
+    int start_minute = start_timeinfo.tm_min;
+    int start_second = start_timeinfo.tm_sec;
+
+    int end_hour = end_timeinfo.tm_hour;
+    int end_minute = end_timeinfo.tm_min;
+    int end_second = end_timeinfo.tm_sec;
 
 
     printf("PID: %d | ", pid);
@@ -103,10 +107,6 @@ void CfsDefault(){
 		{
 			//자식 프로세스 작업 수행
 			product();
-
-			// 자식 프로세스 종료 시간 측정
-			
-
 
 			//자식 프로세스 종료
 			exit(EXIT_SUCCESS);
