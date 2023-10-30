@@ -187,6 +187,10 @@ void CfsDefault(){
 	uint32_t pid, pid_list[PIDS] = {0}; 
 	struct timeval begin_t[PIDS], end_t[PIDS], elapsed_time;
 
+	int pipe_fd[2];
+	if(pipe(pipe_fd) == -1){
+		perror("pipe");
+	}
 
 	for(i=0; i<PIDS; i++){
 
@@ -201,7 +205,11 @@ void CfsDefault(){
 		{
 			//자식 프로세스 작업 수행
 			product();
-			
+			struct timeval end_t_child;
+            gettimeofday(&end_t_child, NULL);
+            
+            // 시간 정보를 부모 프로세스로 전달
+            write(pipe_fd[1], &end_t_child, sizeof(struct timeval));
 			//자식 프로세스 종료
 			exit(EXIT_SUCCESS);
 		}
@@ -217,7 +225,9 @@ void CfsDefault(){
 		if((pid = wait(&status))>1){
 			for(j=0; j<PIDS; j++){
 				if(pid_list[j]== pid){
-                    gettimeofday(&end_t[j], NULL);
+                    struct timeval end_t_child;
+                    read(pipe_fd[0], &end_t_child, sizeof(struct timeval));
+                    end_t[j] = end_t_child;
 					
 					print_time(pid, begin_t[j], end_t[j], NNICE);
 				}
@@ -479,9 +489,12 @@ void RtRr(){
     	perror("sched_rr_get_interval");        	
     }
 
-    
-    printf("Scheduling Policy: RT_RR | Time Quantum: %ld ms | ",  time_slice.tv_nsec/1000000);
-	print_avg_elapsed_time(begin_t, end_t);
+    if(time_slice.tv_sec != 0){
+		printf("Scheduling Policy: RT_RR | Time Quantum: %ld ms | ",  time_slice.tv_sec*1000);	
+	}else{
+		printf("Scheduling Policy: RT_RR | Time Quantum: %ld ms | ",  time_slice.tv_nsec/1000000);
+	}
+    print_avg_elapsed_time(begin_t, end_t);
 }
 
 
@@ -511,17 +524,21 @@ int main(int argc, char **argv)
 
 		if(select == 1){
 			CfsDefault();
+			break;
 		}
 
 		else if (select == 2){
 			CfsNice();
+			break;
 		}
 
 		else if (select == 3){
 			RtFifo();
+			break;
 		}
 		else if (select == 4){
 			RtRr();
+			break;
 		}
 		else if (select == 0){
 			exit(1);
