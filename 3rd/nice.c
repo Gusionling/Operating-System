@@ -91,31 +91,6 @@ void print_avg_elapsed_time(struct timeval begin_t[], struct timeval end_t[]) {
     printf("Average Elapsed Time: %ld.%06ld seconds\n", avg_elapsed_time.tv_sec, avg_elapsed_time.tv_usec);
 }
 
-void whatSched(uint32_t pid){
-	int policy;
-	struct sched_param;
-
-	policy = sched_getscheduler(pid);
-	if(policy == -1){
-		perror("sched_getscheduler");
-	}
-
-	switch(policy){
-		case SCHED_FIFO:
-			printf("PID : %d | 스케쥴링 정책: SCHED_FIFO\n",pid);
-			break;
-		case SCHED_RR:
-			printf("PID : %d | 스케쥴링 정책: SCHED_RR\n", pid);
-			break;
-		case SCHED_OTHER:
-			printf("PID : %d | 스케쥴링 정책: SCHED_OTHER\n", pid);
-			break;
-		default:
-			printf("알 수 없는 스케줄링 정책\n");
-		
-	}
-}
-
 void product(){
 	int k, i, j;
 	int count = 0; 
@@ -141,45 +116,6 @@ void product(){
 
 }
 
-//추후 삭제 바람
-void productT(uint32_t pid){
-	int k, i, j;
-	int count = 0; 
-	struct timeval end_t;
-
-	int result[100][100];
-	int A[100][100];
-	int B[100][100];
-
-	memset(result, 1, sizeof(result));
-	memset(A, 1, sizeof(A));
-	memset(B, 1, sizeof(B));
-
-	while(count < 100){
-        for(k = 0; k < 100; k++){
-            for(i = 0; i < 100; i++){
-                for(j = 0; j < 100; j++){
-                    result[k][j] += A[k][i] * B[i][j];
-                }
-            }
-        }
-        count++;
- 	}
-
-	gettimeofday(&end_t, NULL);
-	time_t end_seconds = end_t.tv_sec;
-	struct tm end_timeinfo;
-    localtime_r(&end_seconds, &end_timeinfo);
-
-    int end_hour = end_timeinfo.tm_hour;
-    int end_minute = end_timeinfo.tm_min;
-    int end_second = end_timeinfo.tm_sec;
-
-	printf("child End time: %02d:%02d:%02d.%06ld | ",end_hour, end_minute, end_second, end_t.tv_usec);
-
-	printf("PID : %d\n", pid);
-
-}
 
 void CfsDefault(){
 	
@@ -234,7 +170,6 @@ void CfsDefault(){
 			}
 		}
 	}
-
     
     printf("Scheduling Policy: CFS_DEFAULT | ");
 	print_avg_elapsed_time(begin_t, end_t);
@@ -251,8 +186,6 @@ void CfsNice(){
 	if(pipe(pipe_fd) == -1){
 		perror("pipe");
 	}
-
-
 
 	for(i=0; i<PIDS; i++){
 
@@ -358,7 +291,6 @@ void RtFifo(){
 	if(pipe(pipe_fd) == -1){
 		perror("pipe");
 	}
-
 
 	uint8_t i,j;
 	uint32_t pid, pid_list[PIDS] = {0}; 
@@ -496,9 +428,6 @@ void RtRr(){
 	}
     print_avg_elapsed_time(begin_t, end_t);
 }
-
-
-
 
 int main(int argc, char **argv)
 {
