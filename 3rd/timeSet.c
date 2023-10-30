@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <sys/syscall.h>
 
 #define PIDS 21
 
@@ -17,6 +18,27 @@
 #define NICE_MID 1
 #define NICE_LOW 19
 #define NNICE 99
+
+
+struct sched_attr {
+   uint32_t size;              /* Size of this structure */
+   uint32_t sched_policy;      /* Policy (SCHED_*) */
+   uint64_t sched_flags;       /* Flags */
+   int32_t  sched_nice;        /* Nice value (SCHED_OTHER,
+                                  SCHED_BATCH) */
+   uint32_t sched_priority;    /* Static priority (SCHED_FIFO,
+                                  SCHED_RR) */
+   /* Remaining fields are for SCHED_DEADLINE */
+   uint64_t sched_runtime;
+   uint64_t sched_deadline;
+   uint64_t sched_period;
+};
+
+//스케줄링 속성을 변경하는 함수
+static int sched_setattr(pid_t pid, const struct sched_attr *attr, unsigned int flags)
+{
+    return syscall(SYS_sched_setattr, pid, attr, flags);
+}
 
 //if_nice는 CFS_NICE일 떄 출력 값을 다르게 하기 위해서 적는 변수이며 nice 범위 밖인 99가 default이다. 
 void print_time(uint32_t pid, struct timeval start_time, struct timeval end_time, int if_nice){
@@ -69,6 +91,31 @@ void print_avg_elapsed_time(struct timeval begin_t[], struct timeval end_t[]) {
     printf("Average Elapsed Time: %ld.%06ld seconds\n", avg_elapsed_time.tv_sec, avg_elapsed_time.tv_usec);
 }
 
+void whatSched(uint32_t pid){
+	int policy;
+	struct sched_param;
+
+	policy = sched_getscheduler(pid);
+	if(policy == -1){
+		perror("sched_getscheduler");
+	}
+
+	switch(policy){
+		case SCHED_FIFO:
+			printf("PID : %d | 스케쥴링 정책: SCHED_FIFO\n",pid);
+			break;
+		case SCHED_RR:
+			printf("PID : %d | 스케쥴링 정책: SCHED_RR\n", pid);
+			break;
+		case SCHED_OTHER:
+			printf("PID : %d | 스케쥴링 정책: SCHED_OTHER\n", pid);
+			break;
+		default:
+			printf("알 수 없는 스케줄링 정책\n");
+		
+	}
+}
+
 void product(){
 	int k, i, j;
 	int count = 0; 
@@ -94,6 +141,45 @@ void product(){
 
 }
 
+//추후 삭제 바람
+void productT(uint32_t pid){
+	int k, i, j;
+	int count = 0; 
+	struct timeval end_t;
+
+	int result[100][100];
+	int A[100][100];
+	int B[100][100];
+
+	memset(result, 1, sizeof(result));
+	memset(A, 1, sizeof(A));
+	memset(B, 1, sizeof(B));
+
+	while(count < 100){
+        for(k = 0; k < 100; k++){
+            for(i = 0; i < 100; i++){
+                for(j = 0; j < 100; j++){
+                    result[k][j] += A[k][i] * B[i][j];
+                }
+            }
+        }
+        count++;
+ 	}
+
+	gettimeofday(&end_t, NULL);
+	time_t end_seconds = end_t.tv_sec;
+	struct tm end_timeinfo;
+    localtime_r(&end_seconds, &end_timeinfo);
+
+    int end_hour = end_timeinfo.tm_hour;
+    int end_minute = end_timeinfo.tm_min;
+    int end_second = end_timeinfo.tm_sec;
+
+	printf("child End time: %02d:%02d:%02d.%06ld | ",end_hour, end_minute, end_second, end_t.tv_usec);
+
+	printf("PID : %d\n", pid);
+
+}
 
 void CfsDefault(){
 	
@@ -115,7 +201,7 @@ void CfsDefault(){
 		{
 			//자식 프로세스 작업 수행
 			product();
-
+			
 			//자식 프로세스 종료
 			exit(EXIT_SUCCESS);
 		}
@@ -216,7 +302,83 @@ void CfsNice(){
 }
 
 void RtFifo(){
-	printf("This is RT_FIFO\n");
+
+	struct sched_attr attr;
+	memset(&attr, 0, sizeof(attr));
+	attr.size = sizeof(struct sched_attr);
+	attr.sched_policy = SCHED_FIFO;
+	attr.sched_priority = 99;
+	attr.sched_runtime = 0;
+	attr.sched_deadline = 0;
+	attr.sched_period = 0;
+
+	if(sched_setattr(getpid(), &attr, 0)==-1){
+		perror("sched_setattr");
+		exit(1);
+	}
+
+	int pipe_fd[2];
+	if(pipe(pipe_fd) == -1){
+		perror("pipe");
+	}
+
+
+
+	
+	uint8_t i,j;
+	uint32_t pid, pid_list[PIDS] = {0}; 
+	struct timeval begin_t[PIDS], end_t[PIDS], elapsed_time;
+
+
+
+	for(i=0; i<PIDS; i++){
+
+		gettimeofday(&begin_t[i], NULL); //생성 시간 측정
+		
+		if((pid = fork()) == (uint32_t)-1){
+			perror("Failed to fork");
+			exit(EXIT_FAILURE);
+		}
+		
+		if(pid == 0)
+		{
+			//자식 프로세스 작업 수행
+			productT(getpid());
+
+			struct timeval end_t_child;
+            gettimeofday(&end_t_child, NULL);
+            
+            // 시간 정보를 부모 프로세스로 전달
+            write(pipe_fd[1], &end_t_child, sizeof(struct timeval));
+
+			//자식 프로세스 종료
+			exit(EXIT_SUCCESS);
+		}
+
+		else{
+			pid_list[i] = pid;
+		}
+		
+	}
+
+	for(i=0; i<PIDS; i++){
+		int status;
+		if((pid = wait(&status))>1){
+			for(j=0; j<PIDS; j++){
+				if(pid_list[j]== pid){
+                    struct timeval end_t_child;
+                    read(pipe_fd[0], &end_t_child, sizeof(struct timeval));
+                    end_t[j] = end_t_child;
+					
+					print_time(pid, begin_t[j], end_t[j], NNICE);
+				}
+			}
+		}
+	}
+
+    
+    printf("Scheduling Policy: RT_FIFO | ");
+	print_avg_elapsed_time(begin_t, end_t);
 }
 
 void RtRr(){
