@@ -10,17 +10,13 @@
 #define ONEKB 1024 //1KB
 #define TWOKB 2048 // 2KB
 #define FOUREKB 4096 //4KB
-#define ADDRESSC 5000 //가상주소 개수 
+#define ADDRESSC 14 //가상주소 개수 
 
 
 int vlength;  //가상주소의 길이
 int psize; //페이지 크기
 int pnum; //페이지 개수
 int fnum; //프레임 개수
-
-
-
-
 
 
 void createFile(){
@@ -43,21 +39,88 @@ void createFile(){
 
 
 void fifo(FILE *inputFile){
-    FILE *outFile = fopen("fifo.out", "w");
+    FILE *outFile = fopen("output.fifo", "w");
 
     if(outFile == NULL){
         perror("파일 열기 실패");
     }
 
-    fprintf(outFile, "%-7s %-8s \n", "No.", "V.a");
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Page No.", "Frame No.", "P.A.", "Page Fault");
     
     int virtualAdd;
     int addressCount = 0;
+    int outPointer = 0;
+    int frameTable[fnum]; // 자료구조
+    int front = 0; //replacement될 위치를 가리키는 변수
+    int rear = 0; //frame이 모두 찼는지를 확인하는 변수
+    int refString[ADDRESSC]; //reference string
+    int offset[ADDRESSC];
+    int frameNum[ADDRESSC]; //할당된 frame 번호를 저장할 공간 - virtual 주소 하나마다 있는거
+    char isFault[ADDRESSC]; //페이지 fault가 일어 났는지 저장하는 공간
+    int physicalAdd[ADDRESSC]; //물리 메모리 주소를 저장해둘 공간
+    int faultcount =0; //fault가 몇번 일어났는지
 
     while(fscanf(inputFile, "%d", &virtualAdd) == 1){
+        
+        //fprintf(outFile, "%-8d %-8d\n", addressCount, virtualAdd);
+        refString[addressCount] = virtualAdd/psize;
+        offset[addressCount] = virtualAdd%psize;
         addressCount++;
-        fprintf(outFile, "%-7d %-8d\n", addressCount, virtualAdd);
     }
+
+
+    for(int i=0; i<ADDRESSC; i++){
+        int isHit = 0;
+        //frame table이 꽉 차지 않았을 때
+        if(rear < fnum){
+            for(int j =0; j<rear; j++){
+                if(refString[i] == frameTable[j]){
+                    isFault[i] = 'H';
+                    isHit = 1;
+                    frameNum[i] = j;
+                    physicalAdd[i] = j*psize+offset[i];
+                }
+            }
+            if(isHit == 0){
+                faultcount++;
+                isFault[i] = 'F';
+                frameNum[i] = rear;
+                physicalAdd[i] = rear*psize+offset[i];
+                frameTable[rear] = refString[i];
+                rear ++;
+
+            }
+        //framtable이 꽉 찬경우
+        }else{
+            for(int j =0; j<rear; j++){
+                //hit인 경우
+                //framTable을 바꿔줄 필요가 없다. 
+                if(refString[i] == frameTable[j]){
+                    isFault[i] = 'H';
+                    isHit = 1;
+                    frameNum[i] = j;
+                    physicalAdd[i] = j*psize+offset[i];
+                }
+            }
+            // 다 돌았지만 fault가 난경우
+            //framtable을 새로운 page number로 바꿔주어야 한다. 
+            if(isHit==0){
+                faultcount++;
+                isFault[i] = 'F';
+                frameNum[i] = front;
+                physicalAdd[i] = front*psize+offset[i];
+                frameTable[front] = refString[i];
+                front = (front + 1) % fnum;
+            }
+
+
+        }
+
+        isHit = 0;
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+
+    }
+    fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
     fclose(outFile);
 
@@ -104,6 +167,7 @@ int main()
         }
         else{
             printf("올바른 입력이 아닙니다. 다시 입력하세요 \n");
+            sleep(1000);
         }
 
     }
