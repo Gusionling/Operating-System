@@ -37,6 +37,11 @@ void createFile(){
     fclose(file);
 }
 
+void optimal(FILE *inputFile){
+
+
+}
+
 
 void fifo(FILE *inputFile){
     FILE *outFile = fopen("output.fifo", "w");
@@ -45,7 +50,7 @@ void fifo(FILE *inputFile){
         perror("파일 열기 실패");
     }
 
-    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Page No.", "Frame No.", "P.A.", "Page Fault");
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
     
     int virtualAdd;
     int addressCount = 0;
@@ -61,8 +66,6 @@ void fifo(FILE *inputFile){
     int faultcount =0; //fault가 몇번 일어났는지
 
     while(fscanf(inputFile, "%d", &virtualAdd) == 1){
-        
-        //fprintf(outFile, "%-8d %-8d\n", addressCount, virtualAdd);
         refString[addressCount] = virtualAdd/psize;
         offset[addressCount] = virtualAdd%psize;
         addressCount++;
@@ -117,7 +120,7 @@ void fifo(FILE *inputFile){
         }
 
         isHit = 0;
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
@@ -127,6 +130,131 @@ void fifo(FILE *inputFile){
 }
 
 
+void lru(FILE *inputFile){
+    
+    FILE *outFile = fopen("output.lru", "w");
+
+    if(outFile == NULL){
+        perror("파일 열기 실패");
+    }
+
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A","Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
+    
+    int virtualAdd;
+    int addressCount = 0;
+    int outPointer = 0;
+    int frameTable[fnum]; // 자료구조
+    int refString[ADDRESSC]; //reference string
+    int offset[ADDRESSC];
+    int frameNum[ADDRESSC]; //할당된 frame 번호를 저장할 공간 - virtual 주소 하나마다 있는거
+    char isFault[ADDRESSC]; //페이지 fault가 일어 났는지 저장하는 공간
+    int physicalAdd[ADDRESSC]; //물리 메모리 주소를 저장해둘 공간
+    int faultcount =0; //fault가 몇번 일어났는지
+
+    int ru_queue[fnum];
+    int rear = -1;
+    int pointer;
+
+    memset(frameTable, -1, sizeof(frameTable));
+    memset(ru_queue, 0, sizeof(ru_queue));
+
+    while(fscanf(inputFile, "%d", &virtualAdd) == 1){
+
+        refString[addressCount] = virtualAdd/psize;
+        offset[addressCount] = virtualAdd%psize;
+        addressCount++;
+    }
+
+     for(int i=0; i<ADDRESSC; i++){
+
+        int isHit = 0;
+        //비어있는 frame이 있는가를 나타냄 
+        int is_pg_full = 1;
+        
+        //페이지 프레임을 찾는다. 
+        for(int j =0; j<fnum; j++){
+
+            //page framse 에서  page reference 찾기
+            if(refString[i] == frameTable[j]){
+
+                isHit = 1;
+                isFault[i] = 'H';
+                frameNum[i] = j;
+                physicalAdd[i] = j*psize+offset[i];
+
+                for(int k =0; k<rear; k++){
+                    if(ru_queue[k] == j){
+                        pointer = k;
+                        break;
+                    }
+                }
+                
+
+                for(int k = pointer; k< rear; k++){
+                    //최근에 참조된 frame번호 이후의 frame 번호들을 앞으로 땡긴다.(더 오래됨을 나타냄) 
+                    ru_queue[k] = ru_queue[k+1];
+                }
+                //가장 최근에 참조된 frame번호(j)는 기존에 있는 것을 바꾸고 마지막에 위치하게 된다. 
+                ru_queue[rear] = j;
+                break;
+            }
+
+        }
+
+        //if page reference is not in page frames
+        if(isHit == 0){
+            isFault[i] = 'F';
+            faultcount++;
+            
+            //빈 frame을 찾아야한다. 
+            for(int j =0; j<fnum; j++){
+            
+
+                if(frameTable[j]==-1){
+                    frameTable[j] = refString[i];
+                    ru_queue[++rear] = j;
+                    is_pg_full = 0;
+                    frameNum[i] = j;
+                    physicalAdd[i] = j*psize+offset[i];
+                    break;
+                }
+                
+            }   
+
+            //여기서 에러가 난다. 
+            //꽉차있으니까 제일 참조 안된게 빠지고 땡기고 빠지게 된게 가장 최근에 참조 된 것이므로 가장 rear에 들어가야된다. 
+            if(is_pg_full){
+                
+                //ru_queue 에 0번 인덱스에 있는게 가장 오래 참조가 안된 frame number로 교체 대상이된다. 
+                pointer = ru_queue[0];
+
+                //frame table에서 새로운 page number로 교체를 한다. 
+                frameTable[pointer] = refString[i];
+                frameNum[i] = pointer;
+                physicalAdd[i] = pointer*psize+offset[i];
+
+                for(int j =0; j<rear; j++){
+                    ru_queue[j] = ru_queue[j+1];
+                }
+                ru_queue[rear] = pointer;
+
+            }
+        }
+
+
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+
+     }
+    fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
+
+    fclose(outFile);
+
+}
+
+
+void sc(FILE *inputFile){
+
+}
 
 
 int main()
@@ -202,7 +330,8 @@ int main()
 
     while(1){
         
-        printf("D. Simulation에 적용할 Page Replacement 알고리즘을 선택하시오\n (1. Optimal  2. FIFO 3. LRU 4. Second-Chance) : ");
+        printf("D. Simulation에 적용할 Page Replacement 알고리즘을 선택하시오\n");
+        printf("1. Optimal  2. FIFO 3. LRU 4. Second-Chance) : ");
         scanf("%d", &select4);
         if(select4 == 1 || select4 == 2 || select4 == 3 || select4 == 4) {
             break;
@@ -215,7 +344,8 @@ int main()
 
     while(1){
         
-        printf("E. 가상주소 스트링 입력방식을 선택하시오\n (1. input.in 자동 생성  2. 기존 파일 사용) : ");
+        printf("E. 가상주소 스트링 입력방식을 선택하시오\n ");
+        printf("1. input.in 자동 생성  2. 기존 파일 사용) : ");
         scanf("%d", &select5);
         
         // input.in파일 생성
@@ -228,9 +358,25 @@ int main()
             if(inputFile == NULL){
                 perror("파일 열기 실패");
             }
-
-
-            fifo(inputFile);
+            
+            switch (select4)
+            {
+            case 1:
+                optimal(inputFile);
+                break;
+            case 2:
+                fifo(inputFile);
+                break;
+            case 3:
+                lru(inputFile);
+                break;
+            case 4:
+                sc(inputFile);
+                break;
+            
+            default:
+                break;
+            }
 
 
             fclose(inputFile);
@@ -257,8 +403,25 @@ int main()
 
             }
 
-            fifo(inputFile);
-
+            switch (select4)
+            {
+            case 1:
+                optimal(inputFile);
+                
+                break;
+            case 2:
+                fifo(inputFile);
+                break;
+            case 3:
+                lru(inputFile);
+                break;
+            case 4:
+                sc(inputFile);
+                break;
+            
+            default:
+                break;
+            }
 
             fclose(inputFile);
 
