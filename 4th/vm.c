@@ -10,7 +10,7 @@
 #define ONEKB 1024 //1KB
 #define TWOKB 2048 // 2KB
 #define FOUREKB 4096 //4KB
-#define ADDRESSC 14 //가상주소 개수 
+#define ADDRESSC 21 //가상주소 개수 
 
 
 int vlength;  //가상주소의 길이
@@ -37,7 +37,127 @@ void createFile(){
     fclose(file);
 }
 
-void optimal(FILE *inputFile){
+void opt(FILE *inputFile){
+
+    FILE *outFile = fopen("output.opt", "w");
+
+    if(outFile == NULL){
+        perror("파일 열기 실패");
+    }
+
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
+    
+    int virtualAdd;
+    int addressCount = 0;
+    int frameTable[fnum]; // 자료구조
+    int refString[ADDRESSC]; //reference string
+    int offset[ADDRESSC];
+    int frameNum[ADDRESSC]; //할당된 frame 번호를 저장할 공간 - virtual 주소 하나마다 있는거
+    char isFault[ADDRESSC]; //페이지 fault가 일어 났는지 저장하는 공간
+    int physicalAdd[ADDRESSC]; //물리 메모리 주소를 저장해둘 공간
+    int faultcount =0; //fault가 몇번 일어났는지
+
+
+    while(fscanf(inputFile, "%d", &virtualAdd) == 1){
+        refString[addressCount] = virtualAdd/psize;
+        offset[addressCount] = virtualAdd%psize;
+        addressCount++;
+    }
+
+    //frameTable의 원소 값이 -1이면 해당 인덱스는 참조가 안된 frmae number이다. 
+    memset(frameTable, -1, sizeof(frameTable));
+
+    for(int i=0; i<ADDRESSC; i++){
+
+        int isHit = 0;
+        //비어있는 frame이 있는가를 나타냄 
+        int is_pg_full = 1;
+        
+        //페이지 프레임을 찾는다. 
+        for(int j =0; j<fnum; j++){
+
+            //page framse 에서  page reference 찾기
+            if(refString[i] == frameTable[j]){
+
+                isHit = 1;
+                isFault[i] = 'H';
+                frameNum[i] = j;
+                physicalAdd[i] = j*psize+offset[i];
+
+                break;
+            }
+
+        }
+
+        //hit가 안된경우
+        if(isHit == 0){
+            isFault[i] = 'F';
+            faultcount++;
+            
+            //빈 frame을 찾아야한다. 
+            for(int j =0; j<fnum; j++){
+            
+
+                if(frameTable[j]==-1){
+                    frameTable[j] = refString[i];
+                    is_pg_full = 0;
+                    frameNum[i] = j;
+                    physicalAdd[i] = j*psize+offset[i];
+                    break;
+                }
+                
+            }   
+
+            //꽉차있으니까 page replacement 수행
+            if(is_pg_full){
+
+                //가장 오래 참조되지 않을 인덱스를 가리키는 변수
+                int page_idx = i;
+                int frame_idx;
+                int isUsed;
+                
+
+                for(int j =0; j<fnum; j++){
+
+                    //reference string에 해당 page number가 없는 경우를 나타내는 변수
+                    isUsed = 0;
+
+                    for(int k =i+1; k<ADDRESSC; k++){
+                        if(refString[k] == frameTable[j]){
+                            if(k > page_idx){
+                                
+                                //교체 대상이 되는 frame number update
+                                frame_idx = j;
+                                page_idx = k;
+                            }
+                            isUsed = 1;
+                            break;
+                        }
+                        
+
+                    }
+
+                    //reference string에 해당 page number가 없는 경우
+                    //이렇게 되면 fifo방식으로 처리 가능
+                    if(!isUsed){
+                        frame_idx = j;
+                        break;
+                    }
+
+                }
+                //페이지 교체 
+                frameTable[frame_idx] = refString[i];
+
+                frameNum[i] = frame_idx;
+                physicalAdd[i] = frame_idx*psize+offset[i];
+
+            }
+        }
+
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+
+
+    }
 
 
 }
@@ -165,7 +285,7 @@ void lru(FILE *inputFile){
         addressCount++;
     }
 
-     for(int i=0; i<ADDRESSC; i++){
+    for(int i=0; i<ADDRESSC; i++){
 
         int isHit = 0;
         //비어있는 frame이 있는가를 나타냄 
@@ -221,7 +341,6 @@ void lru(FILE *inputFile){
                 
             }   
 
-            //여기서 에러가 난다. 
             //꽉차있으니까 제일 참조 안된게 빠지고 땡기고 빠지게 된게 가장 최근에 참조 된 것이므로 가장 rear에 들어가야된다. 
             if(is_pg_full){
                 
@@ -236,6 +355,7 @@ void lru(FILE *inputFile){
                 for(int j =0; j<rear; j++){
                     ru_queue[j] = ru_queue[j+1];
                 }
+                //교체 대상이 된 frame number는 최근에 불려졌으니 마지막에 배치
                 ru_queue[rear] = pointer;
 
             }
@@ -244,7 +364,7 @@ void lru(FILE *inputFile){
 
         fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
-     }
+    }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
     fclose(outFile);
@@ -331,7 +451,7 @@ int main()
     while(1){
         
         printf("D. Simulation에 적용할 Page Replacement 알고리즘을 선택하시오\n");
-        printf("1. Optimal  2. FIFO 3. LRU 4. Second-Chance) : ");
+        printf("1. opt  2. FIFO 3. LRU 4. Second-Chance) : ");
         scanf("%d", &select4);
         if(select4 == 1 || select4 == 2 || select4 == 3 || select4 == 4) {
             break;
@@ -362,7 +482,7 @@ int main()
             switch (select4)
             {
             case 1:
-                optimal(inputFile);
+                opt(inputFile);
                 break;
             case 2:
                 fifo(inputFile);
@@ -406,7 +526,7 @@ int main()
             switch (select4)
             {
             case 1:
-                optimal(inputFile);
+                opt(inputFile);
                 
                 break;
             case 2:
