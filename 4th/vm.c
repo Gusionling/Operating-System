@@ -10,7 +10,7 @@
 #define ONEKB 1024 //1KB
 #define TWOKB 2048 // 2KB
 #define FOUREKB 4096 //4KB
-#define ADDRESSC 21 //가상주소 개수 
+#define ADDRESSC 5000 //가상주소 개수 
 
 
 int vlength;  //가상주소의 길이
@@ -45,7 +45,7 @@ void opt(FILE *inputFile){
         perror("파일 열기 실패");
     }
 
-    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
     
     int virtualAdd;
     int addressCount = 0;
@@ -154,10 +154,11 @@ void opt(FILE *inputFile){
             }
         }
 
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
-
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
     }
+
+    fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
 
 }
@@ -170,7 +171,7 @@ void fifo(FILE *inputFile){
         perror("파일 열기 실패");
     }
 
-    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A", "Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
     
     int virtualAdd;
     int addressCount = 0;
@@ -240,7 +241,7 @@ void fifo(FILE *inputFile){
         }
 
         isHit = 0;
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
@@ -258,7 +259,7 @@ void lru(FILE *inputFile){
         perror("파일 열기 실패");
     }
 
-    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A","Offset" ,"Page No.", "Frame No.", "P.A.", "Page Fault");
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A","Page No.", "Frame No.", "P.A.", "Page Fault");
     
     int virtualAdd;
     int addressCount = 0;
@@ -362,7 +363,7 @@ void lru(FILE *inputFile){
         }
 
 
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
@@ -373,6 +374,132 @@ void lru(FILE *inputFile){
 
 
 void sc(FILE *inputFile){
+    
+    FILE *outFile = fopen("output.sc", "w");
+
+    if(outFile == NULL){
+        perror("파일 열기 실패");
+    }
+
+    fprintf(outFile, "%-15s %-15s %-15s %-15s %-15s %-15s\n", "No.", "V.A","Page No.", "Frame No.", "P.A.", "Page Fault");
+    
+    int virtualAdd;
+    int addressCount = 0;
+    int outPointer = 0;
+    int frameTable[fnum]; // 자료구조
+    int refString[ADDRESSC]; //reference string
+    int offset[ADDRESSC];
+    int frameNum[ADDRESSC]; //할당된 frame 번호를 저장할 공간 - virtual 주소 하나마다 있는거
+    char isFault[ADDRESSC]; //페이지 fault가 일어 났는지 저장하는 공간
+    int physicalAdd[ADDRESSC]; //물리 메모리 주소를 저장해둘 공간
+    int faultcount =0; //fault가 몇번 일어났는지
+
+    //각 frame number들이 참조가 되었는지를 표시해주는 배열
+    int is_ref[fnum];
+    //page replacement가 일어날 때 어디 부터 탐색을 할지를 가리키는 변수
+    //가장 최근 replacement가 일어난 다음 인덱스부터 수행하면된다. 
+    int victim_idx = 0;
+    
+    memset(is_ref, 0, sizeof(is_ref));
+    memset(frameTable, -1, sizeof(frameTable));
+
+    while(fscanf(inputFile, "%d", &virtualAdd) == 1){
+
+        refString[addressCount] = virtualAdd/psize;
+        offset[addressCount] = virtualAdd%psize;
+        addressCount++;
+    }
+    
+    for(int i=0; i<ADDRESSC; i++){
+
+        int isHit = 0;
+        //비어있는 frame이 있는가를 나타냄 
+        int is_pg_full = 1;
+        
+        //페이지 프레임을 찾는다. 
+        for(int j =0; j<fnum; j++){
+
+            //page framse 에서  page reference 찾기
+            if(refString[i] == frameTable[j]){
+
+                isHit = 1;
+                isFault[i] = 'H';
+                frameNum[i] = j;
+                //hit한 경우 해당 frame을 1로 update한다. 
+                is_ref[j] = 1;
+                physicalAdd[i] = j*psize+offset[i];
+
+                break;
+            }
+
+        }
+
+        //hit가 안된경우
+        if(isHit == 0){
+            isFault[i] = 'F';
+            faultcount++;
+            
+            //빈 frame을 찾아야한다. 
+            for(int j =0; j<fnum; j++){
+            
+                if(frameTable[j]==-1){
+                    frameTable[j] = refString[i];
+                    is_pg_full = 0;
+                    frameNum[i] = j;
+                    physicalAdd[i] = j*psize+offset[i];
+                    break;
+                }
+                
+            }   
+
+            //꽉차있으니까 page replacement 수행
+            if(is_pg_full){
+                
+                //ref bit가 0인 frameNumber를 만나면 1로 값이 바뀜 -> 페이지 교체가 일어났다는 뜻이다
+                int isUpdate=0;
+
+                //page replacement가 일어날때까지 while 문
+                while(isUpdate == 0){
+                    
+                    for(int k =victim_idx; k<fnum; k++){
+                        
+                        //해당 ref bit가 1인경우 chance를 준다. 
+                        if(is_ref[k] == 1){
+                            //0으로 값 update
+                            is_ref[k] = 0;
+                        }else{
+                            //ref bit가 0인 frame number로 교체 대상이다.
+                            //교체 후에 ref bit는 그대로 0이기에 ref bit를 update하지 않는다. 
+                            frameTable[k] = refString[i];
+                            isUpdate = 1;
+                            frameNum[i] = k;
+                            physicalAdd[i] = k*psize+offset[i];
+                            //교체 한 다음 index부터 다시 시작하면된다. 
+                            victim_idx = k+1;
+                            break;
+                        }
+                        
+                    }  
+                    //for 문을 돌고 victim_idx++한 값이 frame의 개수와 같다면 0으로 초기화(circular)
+                    //victim_idx의 최대 값은 frame의 개수 -1이기 때문에 
+                    if(victim_idx == fnum){
+                        victim_idx = 0;
+                    }else if(isUpdate==0){
+                        //이 경우는 victim_idx가 한바퀴 다 돌았지만 0인것을 발견하지 못한경우
+                        //처음부터 다시 순회해야하기 때문에 victim_idx를 0으로 초기화한다. 
+                        victim_idx = 0;
+                    }
+                }                
+
+            }
+        }
+
+        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+    }
+    fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
+
+    fclose(outFile);
+
 
 }
 
