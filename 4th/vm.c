@@ -252,6 +252,7 @@ void fifo(FILE *inputFile){
 
 
 void lru(FILE *inputFile){
+
     
     FILE *outFile = fopen("output.lru", "w");
 
