@@ -81,6 +81,9 @@ void opt(FILE *inputFile){
     char isFault[ADDRESSC]; //페이지 fault가 일어 났는지 저장하는 공간
     int physicalAdd[ADDRESSC]; //물리 메모리 주소를 저장해둘 공간
     int faultcount =0; //fault가 몇번 일어났는지
+    int frameAllocationOrder[fnum]; //동일한 우선순위에서 fifo방식구현을 위한 배열
+    memset(frameAllocationOrder, 0, sizeof(frameAllocationOrder));
+    int allocationCounter = 1;
 
 
     while(fscanf(inputFile, "%d", &virtualAdd) == 1){
@@ -122,9 +125,9 @@ void opt(FILE *inputFile){
             //빈 frame을 찾아야한다. 
             for(int j =0; j<fnum; j++){
             
-
                 if(frameTable[j]==-1){
                     frameTable[j] = refString[i];
+                    frameAllocationOrder[j] = allocationCounter++;
                     is_pg_full = 0;
                     frameNum[i] = j;
                     physicalAdd[i] = j*psize+offset[i];
@@ -139,13 +142,15 @@ void opt(FILE *inputFile){
                 //가장 오래 참조되지 않을 인덱스를 가리키는 변수
                 int page_idx = i;
                 int frame_idx;
-                int isUsed;
+                int NoReferFrame_idx = -2;
+                int foundUnrefer = 0; //참조가 되지 않은 페이지가 있는지 여부
+                int oldestFrameOrder = 5001; //5000개로 테스트하기 때문에 가장 늦은 순서가 5000을 넘길 수 없음
                 
 
                 for(int j =0; j<fnum; j++){
-
+                    
                     //reference string에 해당 page number가 없는 경우를 나타내는 변수
-                    isUsed = 0;
+                    int isUsed = 0;
 
                     for(int k =i+1; k<ADDRESSC; k++){
                         if(refString[k] == frameTable[j]){
@@ -161,20 +166,30 @@ void opt(FILE *inputFile){
                         
 
                     }
-
                     //reference string에 해당 page number가 없는 경우
-                    //이렇게 되면 fifo방식으로 처리 가능
-                    if(!isUsed){
-                        frame_idx = j;
-                        break;
+                    if(!isUsed && frameAllocationOrder[j] < oldestFrameOrder){
+                        oldestFrameOrder = frameAllocationOrder[j];
+                        NoReferFrame_idx = j;
+                        foundUnrefer = 1;
                     }
 
                 }
-                //페이지 교체 
-                frameTable[frame_idx] = refString[i];
 
-                frameNum[i] = frame_idx;
-                physicalAdd[i] = frame_idx*psize+offset[i];
+                //모두 참조가 된경우
+                if(!foundUnrefer){
+                    //페이지 교체 
+                    frameTable[frame_idx] = refString[i];
+                    frameNum[i] = frame_idx;
+                    physicalAdd[i] = frame_idx*psize+offset[i];
+                }else{
+                    //하나라도 reference String에서 참조가 안된경우
+                    //페이지 교체 
+                    frameTable[NoReferFrame_idx] = refString[i];
+                    frameNum[i] = NoReferFrame_idx;
+                    physicalAdd[i] = NoReferFrame_idx*psize+offset[i];
+                }
+
+                
 
             }
         }
@@ -615,7 +630,6 @@ int main()
                 }else
                     fnum = 64/select2;
             }
-            printf("frame 의 개수 : %d개 \n", fnum);
             break;
         }
         else{
