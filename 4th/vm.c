@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <ctype.h>
 
 #define EBIT 262144 //18bit
 #define NBIT 524288 //19bit
@@ -17,6 +18,30 @@ int vlength;  //가상주소의 길이
 int psize; //페이지 크기
 int pnum; //페이지 개수
 int fnum; //프레임 개수
+
+
+
+int isValidNumber(char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (!isdigit(str[i]))
+            return 0;
+    }
+    return 1;
+}
+
+void getNumericInput(int *num) {
+    char input[100];
+
+    while (1) {
+        scanf("%s", input);
+        if (isValidNumber(input)) {
+            *num = atoi(input);
+            break;
+        } else {
+            printf("올바른 숫자가 아닙니다. 다시 입력하세요: ");
+        }
+    }
+}
 
 
 void createFile(){
@@ -154,7 +179,13 @@ void opt(FILE *inputFile){
             }
         }
 
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        if(i == ADDRESSC-2){
+            fprintf(outFile, "======================================================================================\n");
+        }
+
+        if(i < 14 || i == ADDRESSC-1){
+            fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        }
 
     }
 
@@ -241,8 +272,14 @@ void fifo(FILE *inputFile){
         }
 
         isHit = 0;
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
 
+        if(i == ADDRESSC-2){
+            fprintf(outFile, "======================================================================================\n");
+        }
+
+        if(i < 14 || i == ADDRESSC-1){
+            fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        }
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
@@ -363,9 +400,13 @@ void lru(FILE *inputFile){
             }
         }
 
+        if(i == ADDRESSC-2){
+            fprintf(outFile, "======================================================================================\n");
+        }
 
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
-
+        if(i < 14 || i == ADDRESSC-1){
+            fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        }
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
@@ -495,7 +536,13 @@ void sc(FILE *inputFile){
             }
         }
 
-        fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        if(i == ADDRESSC-2){
+            fprintf(outFile, "======================================================================================\n");
+        }
+
+        if(i < 14 || i == ADDRESSC-1){
+            fprintf(outFile, "%-15d %-15d %-15d %-15d %-15d %-15c\n", i+1, refString[i]*psize+offset[i], refString[i], frameNum[i], physicalAdd[i], isFault[i]);
+        }
     }
     fprintf(outFile, "Total Number of Page Faults: %d\n", faultcount);
 
@@ -510,7 +557,8 @@ int main()
     int select1, select2, select3, select4, select5;
     while(1){
         printf("A. Simulation에 사용할 가상주소 길이를 선택하시오 (1. 18bits  2. 19bits 3. 20bits) : ");
-        scanf("%d", &select1);
+        getNumericInput(&select1);
+        
         if(select1 == 1){
             vlength = EBIT;
             break;
@@ -530,7 +578,7 @@ int main()
 
     while(1){
         printf("B. Simulation에 사용할 페이지(프레임)의 크기를 선택하시오 (1. 1KB  2. 2KB 3. 4KB) : ");
-        scanf("%d", &select2);
+        getNumericInput(&select2);
         if(select2 == 1){
             psize = ONEKB;
             break;
@@ -553,7 +601,7 @@ int main()
     while(1){
         
         printf("C. Simulation에 사용할 물리메모리의 크기를 선택하시오 (1. 32KB  2. 64KB ) : ");
-        scanf("%d", &select3);
+        getNumericInput(&select3);
         if(select3 == 1 || select3 == 2 ) {
             if(select3 == 1){
                 if(select2 == 3){
@@ -580,7 +628,7 @@ int main()
         
         printf("D. Simulation에 적용할 Page Replacement 알고리즘을 선택하시오\n");
         printf("1. opt  2. FIFO 3. LRU 4. Second-Chance) : ");
-        scanf("%d", &select4);
+        getNumericInput(&select4);
         if(select4 == 1 || select4 == 2 || select4 == 3 || select4 == 4) {
             break;
         }
@@ -594,7 +642,7 @@ int main()
         
         printf("E. 가상주소 스트링 입력방식을 선택하시오\n ");
         printf("1. input.in 자동 생성  2. 기존 파일 사용) : ");
-        scanf("%d", &select5);
+        getNumericInput(&select5);
         
         // input.in파일 생성
         if(select5 == 1){
