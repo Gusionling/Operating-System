@@ -356,7 +356,7 @@ void lru(FILE *inputFile){
                 frameNum[i] = j;
                 physicalAdd[i] = j*psize+offset[i];
 
-                for(int k =0; k<rear; k++){
+                for(int k =0; k<=rear; k++){
                     if(ru_queue[k] == j){
                         pointer = k;
                         break;
