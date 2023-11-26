@@ -221,7 +221,6 @@ void fifo(FILE *inputFile){
     
     int virtualAdd;
     int addressCount = 0;
-    int outPointer = 0;
     int frameTable[fnum]; // 자료구조
     int front = 0; //replacement될 위치를 가리키는 변수
     int rear = 0; //frame이 모두 찼는지를 확인하는 변수
@@ -316,7 +315,6 @@ void lru(FILE *inputFile){
     
     int virtualAdd;
     int addressCount = 0;
-    int outPointer = 0;
     int frameTable[fnum]; // 자료구조
     int refString[ADDRESSC]; //reference string
     int offset[ADDRESSC];
@@ -442,7 +440,6 @@ void sc(FILE *inputFile){
     
     int virtualAdd;
     int addressCount = 0;
-    int outPointer = 0;
     int frameTable[fnum]; // 자료구조
     int refString[ADDRESSC]; //reference string
     int offset[ADDRESSC];
